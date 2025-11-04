@@ -34,6 +34,82 @@ const CONN_DETAILS_ENDPOINT =
   process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
 const SHOW_SETTINGS_MENU = process.env.NEXT_PUBLIC_SHOW_SETTINGS_MENU == 'true';
 
+type FaceTop = { [identity: string]: Array<[string, number]> };
+
+function useHumeFace(room: Room | undefined) {
+  const [faceTop, setFaceTop] = React.useState<FaceTop>({});
+
+  React.useEffect(() => {
+    if (!room) return;
+    const dec = new TextDecoder();
+
+    const onData = (payload: Uint8Array, _participant: any, _kind: any, topic?: string) => {
+      if (topic !== 'hume.face') return;
+      try {
+        const json = JSON.parse(dec.decode(payload));
+        if (json?.type === 'face' && json.identity && Array.isArray(json.top)) {
+          setFaceTop((prev) => ({ ...prev, [json.identity]: json.top }));
+        }
+      } catch (e) {
+        console.warn('bad hume.face message', e);
+      }
+    };
+
+    const onPartLeft = (participant: any) => {
+      setFaceTop((prev) => {
+        if (!participant?.identity || !(participant.identity in prev)) return prev;
+        const next = { ...prev };
+        delete next[participant.identity];
+        return next;
+      });
+    };
+
+    room.on(RoomEvent.DataReceived, onData);
+    room.on(RoomEvent.ParticipantDisconnected, onPartLeft);
+    return () => {
+      room.off(RoomEvent.DataReceived, onData);
+      room.off(RoomEvent.ParticipantDisconnected, onPartLeft);
+    };
+  }, [room]);
+
+  return faceTop;
+}
+
+function HumeFacePanel({ faceTop }: { faceTop: FaceTop }) {
+  const ids = Object.keys(faceTop);
+  if (!ids.length) return null;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        right: 12,
+        top: 12,
+        padding: 10,
+        background: 'rgba(0,0,0,0.55)',
+        borderRadius: 8,
+        fontSize: 12,
+        maxWidth: 280,
+        pointerEvents: 'none',
+      }}
+    >
+      <div style={{ opacity: 0.8, marginBottom: 6 }}>Hume – Face (top-3)</div>
+      {ids.map((id) => {
+        const prettyId = id.split('__')[0];
+        return (
+          <div key={id} style={{ marginBottom: 8 }}>
+            <div style={{ opacity: 0.7, marginBottom: 2 }}>{prettyId}</div>
+            {faceTop[id].map(([name, score]) => (
+              <div key={name}>
+                {name}: {score.toFixed(2)}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function PageClientImpl(props: {
   roomName: string;
   region?: string;
@@ -197,6 +273,7 @@ function VideoConferenceComponent(props: {
   }, [e2eeSetupComplete, room, props.connectionDetails, props.userChoices]);
 
   const lowPowerMode = useLowCPUOptimizer(room);
+  const faceTop = useHumeFace(room);
 
   const router = useRouter();
   const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
@@ -218,7 +295,7 @@ function VideoConferenceComponent(props: {
   }, [lowPowerMode]);
 
   return (
-    <div className="lk-room-container">
+    <div className="lk-room-container" style={{ position: 'relative', height: '100%' }}>
       <RoomContext.Provider value={room}>
         <KeyboardShortcuts />
         <VideoConference
@@ -227,6 +304,7 @@ function VideoConferenceComponent(props: {
         />
         <DebugMode />
         <RecordingIndicator />
+        <HumeFacePanel faceTop={faceTop} />
       </RoomContext.Provider>
     </div>
   );
