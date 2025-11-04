@@ -44,9 +44,11 @@ function useHumeFace(room: Room | undefined) {
     const dec = new TextDecoder();
 
     const onData = (payload: Uint8Array, _participant: any, _kind: any, topic?: string) => {
+      const decoded = dec.decode(payload);
+      console.log('[DataReceived]', { topic, payload: decoded });
       if (topic !== 'hume.face') return;
       try {
-        const json = JSON.parse(dec.decode(payload));
+        const json = JSON.parse(decoded);
         if (json?.type === 'face' && json.identity && Array.isArray(json.top)) {
           setFaceTop((prev) => ({ ...prev, [json.identity]: json.top }));
         }
@@ -90,6 +92,7 @@ function HumeFacePanel({ faceTop }: { faceTop: FaceTop }) {
         fontSize: 12,
         maxWidth: 280,
         pointerEvents: 'none',
+        zIndex: 9999,
       }}
     >
       <div style={{ opacity: 0.8, marginBottom: 6 }}>Hume – Face (top-3)</div>
