@@ -15,10 +15,21 @@ function Tabs(props: React.PropsWithChildren<{}>) {
     router.push(`/?tab=${tab}`);
   }
 
-  let tabs = React.Children.map(props.children, (child, index) => {
+  const childArray = React.Children.toArray(props.children);
+  const tabMeta = childArray.map((child) => {
+    if (!React.isValidElement(child)) {
+      return { label: undefined as string | undefined, hidden: false };
+    }
+    const label = (child.props as { label?: string | undefined })?.label;
+    const hidden = label === 'Custom' || label === 'Demo';
+    return { label, hidden };
+  });
+
+  let tabs = tabMeta.map(({ label, hidden }, index) => {
     return (
       <button
-        className="lk-button"
+        key={label ?? index}
+        className={`lk-button ${hidden ? styles.hiddenTab : ''}`}
         onClick={() => {
           if (onTabSelected) {
             onTabSelected(index);
@@ -26,17 +37,19 @@ function Tabs(props: React.PropsWithChildren<{}>) {
         }}
         aria-pressed={tabIndex === index}
       >
-        {/* @ts-ignore */}
-        {child?.props.label}
+        {label}
       </button>
     );
   });
 
+  const hideTabSelect = tabMeta.every((meta) => meta.hidden);
+
   return (
     <div className={styles.tabContainer}>
-      <div className={styles.tabSelect}>{tabs}</div>
-      {/* @ts-ignore */}
-      {props.children[tabIndex]}
+      <div className={`${styles.tabSelect} ${hideTabSelect ? styles.hiddenSection : ''}`}>
+        {tabs}
+      </div>
+      {childArray[tabIndex]}
     </div>
   );
 }
@@ -54,11 +67,14 @@ function DemoMeetingTab(props: { label: string }) {
   };
   return (
     <div className={styles.tabContent}>
-      <p style={{ margin: 0 }}>Try LiveKit Meet for free with our live demo project.</p>
+      <p className={styles.hiddenSection}>Try LiveKit Meet for free with our live demo project.</p>
       <button style={{ marginTop: '1rem' }} className="lk-button" onClick={startMeeting}>
         Start Meeting
       </button>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div
+        className={styles.hiddenSection}
+        style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+      >
         <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
           <input
             id="use-e2ee"
@@ -123,7 +139,10 @@ function CustomConnectionTab(props: { label: string }) {
         rows={5}
         style={{ padding: '1px 2px', fontSize: 'inherit', lineHeight: 'inherit' }}
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div
+        className={styles.hiddenSection}
+        style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}
+      >
         <div style={{ display: 'flex', flexDirection: 'row', gap: '1rem' }}>
           <input
             id="use-e2ee"
@@ -147,7 +166,7 @@ function CustomConnectionTab(props: { label: string }) {
       </div>
 
       <hr
-        style={{ width: '100%', borderColor: 'rgba(255, 255, 255, 0.15)', marginBlock: '1rem' }}
+        style={{ width: '100%', borderColor: 'rgba(15, 23, 42, 0.12)', marginBlock: '1rem' }}
       />
       <button
         style={{ paddingInline: '1.25rem', width: '100%' }}
@@ -165,18 +184,7 @@ export default function Page() {
     <>
       <main className={styles.main} data-lk-theme="default">
         <div className="header">
-          <img src="/images/livekit-meet-home.svg" alt="LiveKit Meet" width="360" height="45" />
-          <h2>
-            Open source video conferencing app built on{' '}
-            <a href="https://github.com/livekit/components-js?ref=meet" rel="noopener">
-              LiveKit&nbsp;Components
-            </a>
-            ,{' '}
-            <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
-              LiveKit&nbsp;Cloud
-            </a>{' '}
-            and Next.js.
-          </h2>
+          <h1>Affective Mediator</h1>
         </div>
         <Suspense fallback="Loading">
           <Tabs>
@@ -185,7 +193,7 @@ export default function Page() {
           </Tabs>
         </Suspense>
       </main>
-      <footer data-lk-theme="default">
+      {/* <footer data-lk-theme="default">
         Hosted on{' '}
         <a href="https://livekit.io/cloud?ref=meet" rel="noopener">
           LiveKit Cloud
@@ -195,7 +203,7 @@ export default function Page() {
           GitHub
         </a>
         .
-      </footer>
+      </footer> */}
     </>
   );
 }

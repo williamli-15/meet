@@ -87,12 +87,16 @@ function HumeFacePanel({ faceTop }: { faceTop: FaceTop }) {
         right: 12,
         top: 12,
         padding: 10,
-        background: 'rgba(0,0,0,0.55)',
+        background: 'rgba(255, 255, 255, 0.92)',
+        color: '#0f172a',
         borderRadius: 8,
         fontSize: 12,
         maxWidth: 280,
         pointerEvents: 'none',
         zIndex: 9999,
+        border: '1px solid rgba(15, 23, 42, 0.12)',
+        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.12)',
+        backdropFilter: 'blur(12px)',
       }}
     >
       <div style={{ opacity: 0.8, marginBottom: 6 }}>Hume – Face (top-3)</div>

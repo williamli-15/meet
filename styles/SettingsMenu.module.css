@@ -8,10 +8,13 @@
   padding: 0.5rem;
   border-radius: 0;
   padding-bottom: 0.5rem;
-  border-bottom: 3px solid;
-  border-color: var(--bg5);
+  border-bottom: 3px solid rgba(15, 23, 42, 0.15);
+  color: rgba(15, 23, 42, 0.65);
+  transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .tabs > .tab[aria-pressed='true'] {
   border-color: var(--lk-accent-bg);
+  color: var(--lk-accent-bg);
+  font-weight: 600;
 }

@@ -1,6 +1,6 @@
-import '../styles/globals.css';
 import '@livekit/components-styles';
 import '@livekit/components-styles/prefabs';
+import '../styles/globals.css';
 import type { Metadata, Viewport } from 'next';
 import { Toaster } from 'react-hot-toast';
 
@@ -39,13 +39,13 @@ export const metadata: Metadata = {
         url: '/images/livekit-apple-touch.png',
         sizes: '180x180',
       },
-      { rel: 'mask-icon', url: '/images/livekit-safari-pinned-tab.svg', color: '#070707' },
+      { rel: 'mask-icon', url: '/images/livekit-safari-pinned-tab.svg', color: '#2563eb' },
     ],
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: '#070707',
+  themeColor: '#f8fafc',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

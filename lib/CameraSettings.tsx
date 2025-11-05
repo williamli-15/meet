@@ -90,7 +90,10 @@ export function CameraSettings() {
             className="lk-button"
             aria-pressed={backgroundType === 'none'}
             style={{
-              border: backgroundType === 'none' ? '2px solid #0090ff' : '1px solid #d1d1d1',
+              border:
+                backgroundType === 'none'
+                  ? '2px solid var(--lk-accent-bg)'
+                  : '1px solid rgba(15, 23, 42, 0.15)',
               minWidth: '80px',
             }}
           >
@@ -102,9 +105,12 @@ export function CameraSettings() {
             className="lk-button"
             aria-pressed={backgroundType === 'blur'}
             style={{
-              border: backgroundType === 'blur' ? '2px solid #0090ff' : '1px solid #d1d1d1',
+              border:
+                backgroundType === 'blur'
+                  ? '2px solid var(--lk-accent-bg)'
+                  : '1px solid rgba(15, 23, 42, 0.15)',
               minWidth: '80px',
-              backgroundColor: '#f0f0f0',
+              backgroundColor: '#f3f4f6',
               position: 'relative',
               overflow: 'hidden',
               height: '60px',
@@ -117,7 +123,7 @@ export function CameraSettings() {
                 left: 0,
                 right: 0,
                 bottom: 0,
-                backgroundColor: '#e0e0e0',
+                backgroundColor: 'rgba(148, 163, 184, 0.35)',
                 filter: 'blur(8px)',
                 zIndex: 0,
               }}
@@ -126,7 +132,8 @@ export function CameraSettings() {
               style={{
                 position: 'relative',
                 zIndex: 1,
-                backgroundColor: 'rgba(0,0,0,0.6)',
+                backgroundColor: 'rgba(37, 99, 235, 0.12)',
+                color: '#0f172a',
                 padding: '2px 5px',
                 borderRadius: '4px',
                 fontSize: '12px',
@@ -152,13 +159,14 @@ export function CameraSettings() {
                 height: '60px',
                 border:
                   backgroundType === 'image' && virtualBackgroundImagePath === image.path.src
-                    ? '2px solid #0090ff'
-                    : '1px solid #d1d1d1',
+                    ? '2px solid var(--lk-accent-bg)'
+                    : '1px solid rgba(15, 23, 42, 0.15)',
               }}
             >
               <span
                 style={{
-                  backgroundColor: 'rgba(0,0,0,0.6)',
+                  backgroundColor: 'rgba(15, 23, 42, 0.55)',
+                  color: '#ffffff',
                   padding: '2px 5px',
                   borderRadius: '4px',
                   fontSize: '12px',
