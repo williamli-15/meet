@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import toast from 'react-hot-toast';
 import { decodePassphrase, isMeetStaging } from '@/lib/client-utils';
 import { DebugMode } from '@/lib/Debug';
 import { KeyboardShortcuts } from '@/lib/KeyboardShortcuts';
@@ -25,6 +26,7 @@ import {
   RoomEvent,
   TrackPublishDefaults,
   VideoCaptureOptions,
+  RemoteTrackPublication,
 } from 'livekit-client';
 import { useRouter } from 'next/navigation';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
@@ -33,6 +35,10 @@ import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
 const CONN_DETAILS_ENDPOINT =
   process.env.NEXT_PUBLIC_CONN_DETAILS_ENDPOINT ?? '/api/connection-details';
 const SHOW_SETTINGS_MENU = process.env.NEXT_PUBLIC_SHOW_SETTINGS_MENU == 'true';
+const AGENT_PARTICIPANT_ID =
+  process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID && process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID.trim()
+    ? process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID.trim()
+    : 'mediator';
 
 type FaceTop = { [identity: string]: Array<[string, number]> };
 
@@ -137,18 +143,25 @@ export function PageClientImpl(props: {
     undefined,
   );
 
-  const handlePreJoinSubmit = React.useCallback(async (values: LocalUserChoices) => {
-    setPreJoinChoices(values);
-    const url = new URL(CONN_DETAILS_ENDPOINT, window.location.origin);
-    url.searchParams.append('roomName', props.roomName);
-    url.searchParams.append('participantName', values.username);
-    if (props.region) {
-      url.searchParams.append('region', props.region);
-    }
-    const connectionDetailsResp = await fetch(url.toString());
-    const connectionDetailsData = await connectionDetailsResp.json();
-    setConnectionDetails(connectionDetailsData);
-  }, []);
+  const handlePreJoinSubmit = React.useCallback(
+    async (values: LocalUserChoices) => {
+      if (!values.videoEnabled || !values.audioEnabled) {
+        toast.error('Please enable both camera and microphone before joining.');
+        return;
+      }
+      setPreJoinChoices(values);
+      const url = new URL(CONN_DETAILS_ENDPOINT, window.location.origin);
+      url.searchParams.append('roomName', props.roomName);
+      url.searchParams.append('participantName', values.username);
+      if (props.region) {
+        url.searchParams.append('region', props.region);
+      }
+      const connectionDetailsResp = await fetch(url.toString());
+      const connectionDetailsData = await connectionDetailsResp.json();
+      setConnectionDetails(connectionDetailsData);
+    },
+    [props.region, props.roomName],
+  );
   const handlePreJoinError = React.useCallback((e: any) => console.error(e), []);
 
   return (
@@ -218,6 +231,19 @@ function VideoConferenceComponent(props: {
 
   const room = React.useMemo(() => new Room(roomOptions), []);
 
+  const router = useRouter();
+  const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
+  const handleError = React.useCallback((error: Error) => {
+    console.error(error);
+    alert(`Encountered an unexpected error, check the console logs for details: ${error.message}`);
+  }, []);
+  const handleEncryptionError = React.useCallback((error: Error) => {
+    console.error(error);
+    alert(
+      `Encountered an unexpected encryption error, check the console logs for details: ${error.message}`,
+    );
+  }, []);
+
   React.useEffect(() => {
     if (e2eeEnabled) {
       keyProvider
@@ -242,7 +268,7 @@ function VideoConferenceComponent(props: {
 
   const connectOptions = React.useMemo((): RoomConnectOptions => {
     return {
-      autoSubscribe: true,
+      autoSubscribe: false,
     };
   }, []);
 
@@ -251,49 +277,100 @@ function VideoConferenceComponent(props: {
     room.on(RoomEvent.EncryptionError, handleEncryptionError);
     room.on(RoomEvent.MediaDevicesError, handleError);
 
-    if (e2eeSetupComplete) {
-      room
-        .connect(
+    const ensureAudioSubscription = (publication: RemoteTrackPublication) => {
+      if (!publication) {
+        return;
+      }
+      if (publication.kind === 'audio') {
+        publication.setSubscribed(true).catch((error) => {
+          handleError(error as Error);
+        });
+      } else if (publication.kind === 'video') {
+        publication.setSubscribed(false).catch(() => {
+          /* no-op */
+        });
+      }
+    };
+
+    const handleTrackPublished = (_participant: any, publication: RemoteTrackPublication) => {
+      ensureAudioSubscription(publication);
+    };
+
+    room.on(RoomEvent.TrackPublished, handleTrackPublished);
+
+    let isCancelled = false;
+
+    const joinAndConfigure = async () => {
+      if (!e2eeSetupComplete) {
+        return;
+      }
+      try {
+        await room.connect(
           props.connectionDetails.serverUrl,
           props.connectionDetails.participantToken,
           connectOptions,
-        )
-        .catch((error) => {
-          handleError(error);
+        );
+
+        if (isCancelled) {
+          return;
+        }
+
+        await room.localParticipant.setTrackSubscriptionPermissions({
+          allParticipantsAllowed: false,
+          trackPermissions: [
+            {
+              participantIdentity: AGENT_PARTICIPANT_ID,
+              allTracks: true,
+            },
+            {
+              trackType: 'audio',
+            },
+          ],
         });
-      if (props.userChoices.videoEnabled) {
-        room.localParticipant.setCameraEnabled(true).catch((error) => {
-          handleError(error);
+
+        if (isCancelled) {
+          return;
+        }
+
+        if (props.userChoices.videoEnabled) {
+          await room.localParticipant.setCameraEnabled(true);
+        }
+        if (props.userChoices.audioEnabled) {
+          await room.localParticipant.setMicrophoneEnabled(true);
+        }
+
+        room.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            ensureAudioSubscription(publication);
+          });
         });
+      } catch (error) {
+        handleError(error as Error);
       }
-      if (props.userChoices.audioEnabled) {
-        room.localParticipant.setMicrophoneEnabled(true).catch((error) => {
-          handleError(error);
-        });
-      }
-    }
+    };
+
+    joinAndConfigure();
+
     return () => {
+      isCancelled = true;
       room.off(RoomEvent.Disconnected, handleOnLeave);
       room.off(RoomEvent.EncryptionError, handleEncryptionError);
       room.off(RoomEvent.MediaDevicesError, handleError);
+      room.off(RoomEvent.TrackPublished, handleTrackPublished);
     };
-  }, [e2eeSetupComplete, room, props.connectionDetails, props.userChoices]);
+  }, [
+    connectOptions,
+    e2eeSetupComplete,
+    room,
+    props.connectionDetails,
+    props.userChoices,
+    handleError,
+    handleOnLeave,
+    handleEncryptionError,
+  ]);
 
   const lowPowerMode = useLowCPUOptimizer(room);
   const faceTop = useHumeFace(room);
-
-  const router = useRouter();
-  const handleOnLeave = React.useCallback(() => router.push('/'), [router]);
-  const handleError = React.useCallback((error: Error) => {
-    console.error(error);
-    alert(`Encountered an unexpected error, check the console logs for details: ${error.message}`);
-  }, []);
-  const handleEncryptionError = React.useCallback((error: Error) => {
-    console.error(error);
-    alert(
-      `Encountered an unexpected encryption error, check the console logs for details: ${error.message}`,
-    );
-  }, []);
 
   React.useEffect(() => {
     if (lowPowerMode) {

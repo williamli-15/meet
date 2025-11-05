@@ -137,3 +137,23 @@ input[type='checkbox'] {
   border-radius: 0.25rem;
   accent-color: #2563eb;
 }
+
+/* Hide LiveKit supplied video tiles while keeping controls and data channels active */
+.lk-grid-layout,
+.lk-focus-layout,
+.lk-stage-layout,
+.lk-participant-tile,
+.lk-participant-media {
+  display: none !important;
+}
+
+.lk-control-bar [data-lk-source='camera'],
+.lk-control-bar [data-lk-source='microphone'],
+.lk-control-bar [data-lk-source='screen_share'],
+.lk-control-bar [data-lk-source='screenShare'],
+.lk-control-bar [data-lk-action='toggle_settings'],
+.lk-control-bar [data-lk-action='settings'],
+.lk-control-bar button[title*='Settings'],
+.lk-control-bar button[title*='Screen'] {
+  display: none !important;
+}

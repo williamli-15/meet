@@ -7,7 +7,9 @@ import {
   Room,
   RoomConnectOptions,
   RoomOptions,
+  RoomEvent,
   VideoPresets,
+  RemoteTrackPublication,
   type VideoCodec,
 } from 'livekit-client';
 import { DebugMode } from '@/lib/Debug';
@@ -17,6 +19,11 @@ import { SettingsMenu } from '@/lib/SettingsMenu';
 import { useSetupE2EE } from '@/lib/useSetupE2EE';
 import { useLowCPUOptimizer } from '@/lib/usePerfomanceOptimiser';
 import { isMeetStaging } from '@/lib/client-utils';
+
+const AGENT_PARTICIPANT_ID =
+  process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID && process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID.trim()
+    ? process.env.NEXT_PUBLIC_AGENT_PARTICIPANT_ID.trim()
+    : 'mediator';
 
 export function VideoConferenceClientImpl(props: {
   liveKitUrl: string;
@@ -52,7 +59,7 @@ export function VideoConferenceClientImpl(props: {
 
   const connectOptions = useMemo((): RoomConnectOptions => {
     return {
-      autoSubscribe: true,
+      autoSubscribe: false,
     };
   }, []);
 
@@ -69,14 +76,74 @@ export function VideoConferenceClientImpl(props: {
   }, [e2eeEnabled, e2eePassphrase, keyProvider, room, setE2eeSetupComplete]);
 
   useEffect(() => {
-    if (e2eeSetupComplete) {
-      room.connect(props.liveKitUrl, props.token, connectOptions).catch((error) => {
+    let isCancelled = false;
+
+    const ensureAudioSubscription = (publication: RemoteTrackPublication) => {
+      if (!publication) {
+        return;
+      }
+      if (publication.kind === 'audio') {
+        publication.setSubscribed(true).catch((error) => console.error(error));
+      } else if (publication.kind === 'video') {
+        publication.setSubscribed(false).catch(() => {
+          /* no-op */
+        });
+      }
+    };
+
+    const handleTrackPublished = (_participant: any, publication: RemoteTrackPublication) => {
+      ensureAudioSubscription(publication);
+    };
+
+    room.on(RoomEvent.TrackPublished, handleTrackPublished);
+
+    const connectAndConfigure = async () => {
+      if (!e2eeSetupComplete) {
+        return;
+      }
+
+      try {
+        await room.connect(props.liveKitUrl, props.token, connectOptions);
+
+        if (isCancelled) {
+          return;
+        }
+
+        await room.localParticipant.setTrackSubscriptionPermissions({
+          allParticipantsAllowed: false,
+          trackPermissions: [
+            {
+              participantIdentity: AGENT_PARTICIPANT_ID,
+              allTracks: true,
+            },
+            {
+              trackType: 'audio',
+            },
+          ],
+        });
+
+        if (isCancelled) {
+          return;
+        }
+
+        await room.localParticipant.enableCameraAndMicrophone();
+
+        room.remoteParticipants.forEach((participant) => {
+          participant.trackPublications.forEach((publication) => {
+            ensureAudioSubscription(publication);
+          });
+        });
+      } catch (error) {
         console.error(error);
-      });
-      room.localParticipant.enableCameraAndMicrophone().catch((error) => {
-        console.error(error);
-      });
-    }
+      }
+    };
+
+    connectAndConfigure();
+
+    return () => {
+      isCancelled = true;
+      room.off(RoomEvent.TrackPublished, handleTrackPublished);
+    };
   }, [room, props.liveKitUrl, props.token, connectOptions, e2eeSetupComplete]);
 
   useLowCPUOptimizer(room);
