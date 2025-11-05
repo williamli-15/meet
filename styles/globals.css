@@ -137,3 +137,104 @@ input[type='checkbox'] {
   border-radius: 0.25rem;
   accent-color: #2563eb;
 }
+
+/* Hide LiveKit supplied video tiles while keeping controls and data channels active */
+.lk-grid-layout,
+.lk-focus-layout,
+.lk-stage-layout,
+.lk-participant-tile,
+.lk-participant-media {
+  display: none !important;
+}
+
+/* Remove the video stage container so chat can take the full canvas */
+.lk-grid-layout-wrapper,
+.lk-focus-toggle-button {
+  display: none !important;
+}
+
+.lk-control-bar [data-lk-source='camera'],
+.lk-control-bar [data-lk-source='microphone'],
+.lk-control-bar [data-lk-source='screen_share'],
+.lk-control-bar [data-lk-source='screenShare'],
+.lk-control-bar [data-lk-action='toggle_settings'],
+.lk-control-bar [data-lk-action='settings'],
+.lk-control-bar button[title*='Settings'],
+.lk-control-bar button[title*='Screen'],
+.lk-control-bar .lk-button-group,
+.lk-control-bar .lk-button-group-menu,
+.lk-control-bar .lk-device-menu,
+.lk-control-bar .lk-chat-toggle {
+  display: none !important;
+}
+
+.lk-room-container [data-lk-action='toggle_settings'],
+.lk-room-container [data-lk-action='settings'],
+.lk-room-container button[title*='Settings'],
+.lk-room-container .lk-button.lk-settings-toggle,
+.lk-room-container .lk-settings-toggle,
+.lk-chat .lk-chat-toggle,
+.lk-chat .lk-close-button {
+  display: none !important;
+}
+
+.lk-video-conference {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: transparent;
+}
+
+.lk-video-conference-inner {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+}
+
+/* Keep the control bar centered even though video tiles are hidden */
+.lk-control-bar {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+}
+
+/* Restyle chat to become the primary surface (WhatsApp-like layout) */
+.lk-chat {
+  display: flex !important;
+  flex-direction: column;
+  gap: 1rem;
+  width: min(680px, 100%);
+  height: calc(100% - 4rem);
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 1rem;
+  box-shadow: 0 32px 64px rgba(15, 23, 42, 0.14);
+  padding: 1.5rem;
+}
+
+.lk-chat-header {
+  justify-content: space-between;
+  align-items: center;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.lk-chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.lk-chat-form {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.lk-chat-form-input {
+  flex: 1;
+}
